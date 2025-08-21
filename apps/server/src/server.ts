@@ -25,7 +25,7 @@ setupWebSocket(server);
 
 const store = new SessionStore();
 const aiGenerator = new AICodeGenerator();
-const codeExecutor = new DockerCodeExecutor();
+const codeExecutor = env.E2B_API_KEY ? new E2BCodeExecutor() : new DockerCodeExecutor();
 
 app.use(helmet());
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
@@ -60,10 +60,6 @@ async function initializeServer(): Promise<void> {
   await ensureDirectoryExists(env.RESULTS_DIR);
   if (!env.GEMINI_API_KEY) {
     logger.error("GEMINI_API_KEY environment variable is required");
-    process.exit(1);
-  }
-  if (!env.E2B_API_KEY) {
-    logger.error("E2B_API_KEY environment variable is required");
     process.exit(1);
   }
   startSessionCleanup(store);
