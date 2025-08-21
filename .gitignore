@@ -1,0 +1,6 @@
+.cursor
+results/
+uploads/
+logs/
+node_modules/
+.env

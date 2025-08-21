@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+apps/*/node_modules/
+
+# Build outputs
+dist/
+build/
+apps/server/dist/
+apps/client/build/
+apps/client/dist/
+*.tsbuildinfo
+
+# Laravel Mix outputs
+public/css/
+public/js/
+public/mix-manifest.json
+
+# Generated files
+coverage/
+
+# Config files that might have specific formatting
+package-lock.json
+yarn.lock
+
+# Environment files
+.env*
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+
+# Project specific files that shouldn't be formatted
+snippets/
+storage/
+apps/server/public/
+apps/client/public/
+
+# Handlebars templates (preserve formatting)
+apps/server/src/views/**/*.hbs
+
+# Auto-generated Vite files
+apps/client/vite.config.ts.timestamp-*
