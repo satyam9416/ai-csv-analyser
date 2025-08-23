@@ -6,6 +6,7 @@ import { ChatMessage, CodeExecutor, ExecutionResult, UploadedFileInfo } from "..
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "../config/env";
 import { promises as fs } from "fs";
+import { PROMPTS, buildConversationContext } from "../config/prompts";
 
 const AgentState = Annotation.Root({
   sessionId: Annotation<string>,
@@ -42,28 +43,15 @@ export class AgentWorkflow {
     .addNode("chat", async (state: typeof AgentState.State) => {
       broadcastToSession(state.sessionId, { type: "status", message: "..." });
 
-      const conversationContext = this.buildConversationContext(state.chatHistory || []);
+      const conversationContext = buildConversationContext(state.chatHistory || []);
+      const systemPrompt = PROMPTS.CHAT_ASSISTANT.SYSTEM;
+      const userPrompt = PROMPTS.CHAT_ASSISTANT.USER_TEMPLATE(
+        conversationContext,
+        state.currentFile,
+        state.userInput,
+      );
 
-      const prompt = `You are a helpful and friendly CSV data analysis assistant. You help users understand their data and guide them through analysis. You can make data visualizations by plotting graphs and all.
-
-${conversationContext}
-
-Current context: ${
-        state.currentFile
-          ? `User has uploaded a CSV file with Data:
-              - Total Rows: ${state.currentFile.csvData.totalRows}
-              - Columns: ${state.currentFile.csvData.headers.join(", ")}
-              - Data Types: ${Object.entries(state.currentFile.dataTypes)
-                .map(([col, type]) => `${col}: ${type}`)
-                .join(", ")}.
-
-Be conversational, helpful, and suggest what kind of analysis they might want to perform. Keep responses concise but informative.`
-          : "User hasn't uploaded any CSV."
-      }
-
-Keep your responses consise and user friendly. Don't include unneccessary informations.
-
-Current user message: ${state.userInput}`;
+      const prompt = `${systemPrompt}\n\n${userPrompt}`;
 
       const res = await this.chitchat.generateContent(prompt);
       const content = res.response.text();
@@ -140,43 +128,18 @@ except Exception as e:
       const { userInput, currentFile } = state;
       let responseContent = "";
 
-      // Generate summary using CSV data, user prompt, and Gemini
       try {
-        // Convert CSV data to a readable format for Gemini
-        const csvDataString = currentFile.csvData.data
-          .map((row) => currentFile.csvData.headers.map((header) => row[header]).join(","))
-          .join("\n");
+        const conversationContext = buildConversationContext(state.chatHistory);
 
-        const csvHeaders = currentFile.csvData.headers.join(",");
-        const completeCsvData = `${csvHeaders}\n${csvDataString}`;
+        const systemPrompt = PROMPTS.ANALYSIS_SUMMARY.SYSTEM;
 
-        const conversationContext = this.buildConversationContext(state.chatHistory);
+        const userPrompt = PROMPTS.ANALYSIS_SUMMARY.USER_TEMPLATE(
+          conversationContext,
+          currentFile,
+          userInput,
+        );
 
-        const summaryPrompt = `You are a data analyst. Analyze the following CSV data based on the user's request and provide insights.
-
-${conversationContext}
-
-CSV Data:
-${completeCsvData}
-
-Data Summary:
-- Total Rows: ${currentFile.csvData.totalRows}
-- Columns: ${currentFile.csvData.headers.join(", ")}
-- Data Types: ${Object.entries(currentFile.dataTypes)
-          .map(([col, type]) => `${col}: ${type}`)
-          .join(", ")}
-
-Current User Request: ${userInput}
-
-Please analyze the actual data and provide:
-1. Key findings and insights based on the data
-2. Relevant statistics and calculations
-3. Patterns or trends identified in the data
-4. Data-driven recommendations
-
-Consider the conversation history when providing insights. If this is a follow-up question, reference previous analysis appropriately.
-Keep the response concise, user-friendly, and focused on actionable insights. Perform actual calculations on the data when relevant.`;
-
+        const summaryPrompt = `${systemPrompt}\n\n${userPrompt}`;
         const summaryResult = await this.chitchat.generateContent(summaryPrompt);
         const summary = summaryResult.response.text();
 
@@ -223,35 +186,11 @@ Keep the response concise, user-friendly, and focused on actionable insights. Pe
       .map((msg) => `${msg.role}: ${msg.content}`)
       .join("\n");
 
-    const sys = `Classify the user's intent for a CSV analysis assistant.
-Answer strictly as JSON with keys: mode (chat|analysis) and wantsVisualization (true|false).
+    const systemPrompt = PROMPTS.INTENT_CLASSIFICATION.SYSTEM;
+    const userPrompt = PROMPTS.INTENT_CLASSIFICATION.USER_TEMPLATE(userInput, recentContext);
 
-${recentContext ? `Recent conversation context:\n${recentContext}\n` : ""}
-
-Analysis mode triggers when user asks to:
-- analyze, compute, summarize, find, calculate
-- plot, chart, visualize, graph, show
-- correlation, trend, distribution, pattern
-- statistics, stats, mean, median, correlation
-- compare, relationship, insight
-- follow-up questions about previous analysis (like "what about X column?", "show me more", "can you also check Y?")
-
-Chat mode for:
-- general conversation, greetings, thanks
-- clarification questions about the tool
-- non-analysis related questions
-
-Visualization (wantsVisualization: true) ONLY when user explicitly asks for:
-- plot, chart, visualize, graph, show, display
-- "create a chart", "make a graph", "show me a plot"
-- "visualize the data", "draw a chart"
-- "correlation plot", "trend chart", "distribution graph"
-
-For summary-only requests like "summarize", "give me insights", "what are the key findings", use wantsVisualization: false.
-
-For follow-up questions like "show me more details", "what about X", "can you explain", use analysis mode with wantsVisualization: false unless they specifically ask for charts.`;
-
-    const res = await this.classifier.generateContent(`${sys}\nUser: ${userInput}`);
+    const prompt = `${systemPrompt}\n\n${userPrompt}`;
+    const res = await this.classifier.generateContent(prompt);
     const txt = res.response.text();
     try {
       const parsed = JSON.parse(txt.replace(/```json\n?|```/g, ""));
@@ -267,29 +206,6 @@ For follow-up questions like "show me more details", "what about X", "can you ex
         wantsVisualization,
       };
     }
-  }
-
-  private buildConversationContext(chatHistory: ChatMessage[]): string {
-    if (!chatHistory.length) return "";
-
-    // Get recent conversation history (last 10 messages to avoid token limits)
-    const recentHistory = chatHistory.slice(-10);
-
-    let context = "Previous conversation:\n";
-    recentHistory.forEach((msg, index) => {
-      const role = msg.role === "user" ? "User" : "Assistant";
-      context += `${role}: ${msg.content}\n`;
-
-      // Add analysis results if available
-      if (msg.executionResult?.success && msg.executionResult.files.length > 0) {
-        context += `[Charts created: ${msg.executionResult.files
-          .map((f) => f.split("/").pop())
-          .join(", ")}]\n`;
-      }
-    });
-    context += "\n";
-
-    return context;
   }
 
   async run(

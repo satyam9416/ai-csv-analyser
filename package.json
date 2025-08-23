@@ -10,12 +10,18 @@
     "dev": "npm-run-all -p dev:*",
     "dev:server": "npm --workspace @csv/server run dev",
     "dev:client": "npm --workspace @csv/client run dev",
-    "start": "npm --workspace @csv/server start"
+    "build": "npm-run-all build:*",
+    "build:client": "npm --workspace @csv/client run build",
+    "build:server": "npm --workspace @csv/server run build",
+    "start": "npm --workspace @csv/server start",
+    "clean": "find . -name 'node_modules' -type d -not -path './node_modules' -exec rm -rf {} +",
+    "install:clean": "npm run clean && npm install"
   },
   "devDependencies": {
     "npm-run-all": "^4.1.5"
   },
   "dependencies": {
-    "@e2b/code-interpreter": "^1.5.1"
+    "@e2b/code-interpreter": "^1.5.1",
+    "dotenv-flow": "^4.1.0"
   }
 }

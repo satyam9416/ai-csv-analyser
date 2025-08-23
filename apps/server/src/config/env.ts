@@ -1,8 +1,10 @@
-import dotenv from "dotenv";
+import dotenv from "dotenv-flow";
 import path from "path";
 import fs from "fs";
 
-dotenv.config();
+dotenv.config({
+  path: "../../",
+});
 
 const findProjectRoot = (): string => {
   let currentDir = __dirname;

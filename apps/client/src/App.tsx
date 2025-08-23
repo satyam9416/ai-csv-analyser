@@ -55,7 +55,7 @@ const CSVUploadCard = ({ uploadInfo }: { uploadInfo: UploadResponse["fileInfo"] 
   const dateColumns = Object.values(uploadInfo.dataTypes).filter((type) => type === "date").length;
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 max-w-sm">
+    <div className="bg-linear-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 max-w-sm">
       <div className="flex items-start gap-3">
         <div className="bg-blue-100 p-2 rounded-lg">
           <FileText className="h-5 w-5 text-blue-600" />
@@ -388,6 +388,12 @@ export default function App() {
                   type="file"
                   accept=".csv,text/csv"
                   className="hidden"
+                  ref={(e) => {
+                    if (!e) return;
+                    if (!attachedFile) {
+                      e.value = "";
+                    }
+                  }}
                   onChange={(e) => setAttachedFile(e.target.files?.[0] ?? null)}
                 />
               </label>

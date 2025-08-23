@@ -2,14 +2,17 @@ import path from "path";
 import { promises as fs } from "fs";
 import { Router } from "express";
 import { env } from "../config/env";
+import { logger } from "../config/logger";
 
 export function filesRouter(): Router {
   const router = Router();
 
-  router.get("/files/:filePath(*)", async (req, res) => {
+  router.get("/files/*filePaths", async (req, res) => {
     try {
-      const { filePath } = req.params as { filePath?: string };
-      if (!filePath) return res.status(400).json({ error: "Invalid parameters" });
+      const { filePaths } = req.params as { filePaths?: string[] };
+      if (!filePaths) return res.status(400).json({ error: "Invalid parameters" });
+
+      const filePath = filePaths.join("/");
 
       const resolvedBase = path.resolve(env.RESULTS_DIR);
       const resolvedPath = path.resolve(env.RESULTS_DIR, filePath);
@@ -25,6 +28,7 @@ export function filesRouter(): Router {
         return res.status(404).json({ error: "File not found" });
       }
     } catch (_error) {
+      logger.error(_error);
       return res.status(500).json({ error: "Failed to serve file" });
     }
   });

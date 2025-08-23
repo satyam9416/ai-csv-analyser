@@ -4,3 +4,5 @@ uploads/
 logs/
 node_modules/
 .env
+*.csv
+dist

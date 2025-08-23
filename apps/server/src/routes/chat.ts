@@ -39,29 +39,6 @@ export function chatRouter(
 
       session.messages.push(userMessage);
 
-      // if (!session.context.currentFile) {
-      //   broadcastToSession(sessionId, { type: "status", message: "Starting chat response..." });
-      //   const gemini = new GoogleGenerativeAI(env.GEMINI_API_KEY || "");
-      //   const model = gemini.getGenerativeModel({ model: env.GEMINI_MODEL });
-      //   const prompt = `You are a helpful data assistant. If the user asks about data analysis, answer conceptually. Keep responses concise and friendly.\n\nUser: ${message}`;
-      //   const result = await model.generateContent(prompt);
-      //   const text = (await result.response).text();
-      //   const botResponse: ChatMessage = {
-      //     id: uuidv4(),
-      //     type: "bot",
-      //     content: text,
-      //     timestamp: new Date(),
-      //   };
-      //   session.messages.push(botResponse);
-      //   return res.json({
-      //     success: true,
-      //     response: botResponse.content,
-      //     messageId: botResponse.id,
-      //     hasVisualization: false,
-      //     files: [],
-      //   });
-      // }
-
       broadcastToSession(sessionId, { type: "status", message: "..." });
       const currentFile = session.context.currentFile;
 

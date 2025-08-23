@@ -5,7 +5,6 @@ import { v4 as uuidv4 } from "uuid";
 import { env } from "../config/env";
 import { ExecutionResult, CodeExecutor } from "../types";
 import { ensureDirectoryExists } from "../utils/fs";
-import { broadcastToSession } from "../websocket/ws";
 import { logger } from "../config/logger";
 
 export class DockerCodeExecutor implements CodeExecutor {
